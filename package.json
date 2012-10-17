@@ -1,6 +1,7 @@
 {
   "author": {
-    "name": "wronex"
+    "name": "wronex",
+    "email": "code@wronex.com"
   },
   "name": "conquer",
   "description": "Restarts NodeJS or Coffee on file changes or crashes",
@@ -12,7 +13,8 @@
   "homepage": "http://wronex.github.com/node-conquer",
   "contributors": [
     {
-      "name": "wronex"
+      "name": "wronex",
+      "email": "code@wronex.com"
     }
   ],
   "keywords": [
