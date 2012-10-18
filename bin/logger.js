@@ -41,19 +41,19 @@ function error() {
 }
 
 /**
- * Writes the supplied message from the running application to the log.
- * @param {String} app - the name of the running application.
+ * Writes the supplied message from the running script to the log.
+ * @param {String} script - the name of the running script.
  * @param {String} msg - the message.
  * @param {Boolean} isError - indicates if the message is an error message.
  */
-function appLog(app, msg, isError) {
+function scriptLog(script, msg, isError) {
 	write(msg, 
 		isError ? clc.red : null, 
-		clc.yellow('[' + app + ']'));
+		clc.yellow('[' + script + ']'));
 }
 
 // Public interface:
 exports.log = log;
 exports.warn = warn;
 exports.error = error;
-exports.appLog = appLog;
+exports.scriptLog = scriptLog;

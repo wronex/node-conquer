@@ -5,18 +5,21 @@ var watchr	= require('watchr'),
 	clc		= require('cli-color'),
 	spawn	= require('child_process').spawn,
 	path	= require('path'),
+	fs		= require('fs'),
 	logger	= require('./logger.js');
 
 var extensions	= ['.js', '.json', '.coffee'], // All file extensions to watch.
-	appPath 	= './', 	// Path to the script.
-	app 		= 'app.js', // The script to run.
-	appParams 	= [], 		// Parameters that will be sent to the parser.
-	parser 		= 'node'	// The parser that should run the script.
-	instance	= null; 	// Instance of the parser process.
+	watchPaths 	= ['./'], 		// Paths to watch for changes.
+	script 		= 'script', 	// The script to run.
+	scriptParams= [], 			// Parameters that will be sent to the parser.
+	parser 		= 'node',		// The parser that should run the script.
+	instance	= null, 		// Instance of the parser process.
+	restartOnCleanExit = false;	// Indicates if the parser should be restarted 
+								// on clean exits (error code 0).
 
 /**
- * Parses the supplied string of comma seperated file extensions and returns a 
- *   list.
+ * Parses the supplied string of comma seperated file extensions and returns an 
+ *   array of its values.
  * @param {String} str - a string on the format ".ext1,.ext2,.ext3".
  * @retruns {String[]} - a list of all the found extensions in @a str.
  */
@@ -28,7 +31,19 @@ function extensionsParser(str) {
 		var ext = '.' + list[i].replace(/(^\s?\.?)|(\s?$)/g, '');
 		list[i] = ext.toLowerCase();
 	}
-	console.log('%j', list)
+	return list;
+}
+
+/**
+ * Parses the supplied string of comma seperated list and returns an array of
+ *   its values.
+ * @param {String} str - a string on the format "value1, value2, value2".
+ * @retruns {String[]} - a list of all the found extensions in @a str.
+ */
+function listParser(str) {
+	var list = str.split(',');
+	for (var i = 0; i < list.length; i++)
+		list[i] = list[i].replace(/(^\s?)|(\s?$)/g, '');
 	return list;
 }
 
@@ -42,7 +57,7 @@ function kill(noMsg) {
 		return;
 
 	if ((noMsg || false) !== true)
-		logger.log('Killed', clc.green(app));
+		logger.log('Killed', clc.green(script));
 	
 	instance.kill();
 	instance = null;
@@ -50,7 +65,7 @@ function kill(noMsg) {
 
 /** Restarts the parser. */
 function restart() {
-	logger.log('Restarting', clc.green(app));
+	logger.log('Restarting', clc.green(script));
 	kill(true);
 	start(true);
 }
@@ -62,17 +77,17 @@ function restart() {
  */
 function start(noMsg) {
 	if ((noMsg || false) !== true)
-		logger.log('Starting', clc.green(app), 'with', clc.magenta(parser));
+		logger.log('Starting', clc.green(script), 'with', clc.magenta(parser));
 	
 	if (instance)
 		return;
 	
-	// Spawn an instance of the parser that will run the app.
-	instance = spawn(parser, [app].concat(appParams));
+	// Spawn an instance of the parser that will run the script.
+	instance = spawn(parser, [script].concat(scriptParams));
 	
-	// Redirect the parser/app's output to the console.
-	instance.stdout.on('data', function (data) { logger.appLog(app, data.toString()); });
-	instance.stderr.on('data', function (data) { logger.appLog(app, data.toString(), true); });
+	// Redirect the parser/script's output to the console.
+	instance.stdout.on('data', function (data) { logger.scriptLog(script, data.toString()); });
+	instance.stderr.on('data', function (data) { logger.scriptLog(script, data.toString(), true); });
 	instance.stderr.on('data', function (data) {
 		if (/^execvp\(\)/.test(data.toString())) {
 			logger.error('Failed to restart child process.');
@@ -81,9 +96,17 @@ function start(noMsg) {
 	});
 	instance.on('exit', function (code, signal) {
 		if (signal == 'SIGUSR2') {
-			logger.error('Signal interuption.');
+			logger.error('Signal interuption');
 			restart();
-		};
+			return;
+		}
+		
+		logger.log(clc.green(script), 'exited with code', clc.yellow(code));
+		
+		if (code == 0 && restartOnCleanExit) {
+			restart();
+			return;
+		}
 	});
 }
 
@@ -113,53 +136,96 @@ if (process.platform.substr(0, 3) !== 'win') {
 
 // Configure commander for the commands it should accept from the user.
 program
-	.version('1.0.2')
-	.usage('[options] <app.js> [app options]')
-	.option('-e, --extensions [".js,.txt"]', 
-			'watch for changes to these file extensions', 
-			extensionsParser);
+	.version('1.0.3')
+	.usage('[options] <script> [script args ...]')
+	.option('-e, --extensions <list>', 'a list of extensions to watch for changes', extensionsParser)
+	.option('-w, --watch <list>', 'a list of folders to watch for changes', listParser)
+	.option('-x, --exec <executable>', 'the executable that runs the script')
+	.option('-r, --restart-on-exit', 'restart on clean exit')
 
-program.on('--help', function(){
+program.on('--help', function() {
+	console.log('  Required:');
+	console.log('');
+	console.log('    <script>  the script to run, eg. "server.js"');
+	console.log('');
+	console.log('  More Info:');
+	console.log('');
+	console.log('    <list>  a comma-delimited list, eg. "coffee,jade" or "./, bin/"');
+	console.log('');
+	console.log('    The default extensions are "js, json, coffee". Override using -e.');
+	console.log('');
+	console.log('    By default the same directory as the script is watched. Override using -w.');
+	console.log('');
+	console.log('    The executable that will run the script is automatically choosen based on');
+	console.log('    file extension. Coffee is used for ".coffee"; otherwise Node is used.');
+	console.log('    Override using -x.');
+	console.log('');
 	console.log('  Example:');
 	console.log('');
-	console.log('    $ conquer -e ".js, .json" server.js --port 80');
+	console.log('    $ conquer server.js');
+	console.log('    $ conquer -w templates -e jade run.coffee');
+	console.log('    $ conquer -x traceurc -n IAmFuture.next');
+	console.log('    $ conquer -e ".js, .jade" server.js --port 80');
 	console.log('');
-	console.log('    Will start server.js on port 80 using Node. It will monitor all .js and');
-	console.log('    .json files in the same directory (and subdirectories) as server.js for');
-	console.log('    changes.');
+	console.log('    The last example will start server.js on port 80 using Node. It will');
+	console.log('    monitor all .js and .jade files in the same directory (and subdirectories)');
+	console.log('    as server.js for changes.');
 	console.log('');
 });
 
 program.parse(process.argv);
 
 // The input file should be the first argument.
-if (program.args.length == 0) {
+script = program.args[0];
+if (!script) {
 	logger.warn('No input file!');
 	process.exit(0);
 	return;
 }
-app = program.args[0];
-appPath = path.dirname(app);
 
-// All arguments after the input file (app) are app parameters that will be 
-// passed to the parser.
-appParams = process.argv.slice(process.argv.indexOf(app) + 1);
+if (!fs.existsSync(script)) {
+	logger.warn('Input file not found!');
+	process.exit(0);
+	return;
+}
 
-// Select parser based on file extension.
-if (path.extname(app) == '.coffee') {
-	parser = 'coffee';
-	if (process.platform.substr(0, 3) == 'win')
-		parser = 'coffee.cmd';
+if (program.watch) {
+	// Watch the paths supplied by the user.
+	watchPaths = program.watch;
+	//logger.log('Watching paths: ' + clc.green(watchPaths.join(', ')));
+} else {
+	// Watch the path containing the script.
+	watchPaths = [path.dirname(script)];
+}
+
+// All arguments after the input file (script) are script parameters that will
+// be passed to the parser.
+scriptParams = process.argv.slice(process.argv.indexOf(script) + 1);
+
+if (program.exec) {
+	// Use the user supplied parser.
+	parser = program.exec;
+} else {
+	// Select parser based on file extension.
+	if (path.extname(script) == '.coffee') {
+		parser = 'coffee';
+		if (process.platform.substr(0, 3) == 'win')
+			parser = 'coffee.cmd';
+	}
 }
 
 if (program.extensions) {
+	// Watch the user supplied file extensions.
 	extensions = program.extensions;
-	logger.log('Watching extensions: ' + clc.green(extensions.join(', ')));
+	//logger.log('Watching extensions: ' + clc.green(extensions.join(', ')));
 }
 
+restartOnCleanExit = program.restartOnExit || false;
+
 // Watch the directory supplied by the user.
+logger.log('Watching', clc.green(watchPaths.join(', ')), 'for changes to', clc.green(extensions.join(', ')));
 watchr.watch({
-	path: appPath,
+	paths: watchPaths,
 	listener: function(eventName, filePath, fileCurrentStat, filePreviousStat) {
 		// We are only interesed in files with extensions that are part of the 
 		// extensions array.
@@ -169,11 +235,11 @@ watchr.watch({
 			restart();
 		}
 	},
-	next: function(err,watcher) {
-		if (err) 
+	next: function(err, watcher) {
+		if (err)
 			throw err;
 			
-		logger.log('Watcher setup successfully');
+		//logger.log('Watcher setup successfully');
 		start();
 	}
 });
