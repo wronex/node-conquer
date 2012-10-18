@@ -42,7 +42,7 @@ Example:
 
   $ conquer server.js
   $ conquer -w templates -e jade run.coffee
-  $ conquer -x traceurc IAmFuture.next
+  $ conquer -x traceurc -e next IAmFuture.next
   $ conquer -e ".js, .jade" server.js --port 80
 
   The last example will start server.js on port 80 using Node. It will
