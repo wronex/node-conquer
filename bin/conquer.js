@@ -164,7 +164,7 @@ program.on('--help', function() {
 	console.log('');
 	console.log('    $ conquer server.js');
 	console.log('    $ conquer -w templates -e jade run.coffee');
-	console.log('    $ conquer -x traceurc -n IAmFuture.next');
+	console.log('    $ conquer -x traceurc IAmFuture.next');
 	console.log('    $ conquer -e ".js, .jade" server.js --port 80');
 	console.log('');
 	console.log('    The last example will start server.js on port 80 using Node. It will');
