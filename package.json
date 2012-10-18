@@ -1,52 +1,53 @@
 {
-  "author": {
-    "name": "wronex",
-    "email": "code@wronex.com"
-  },
-  "name": "conquer",
-  "description": "Restarts NodeJS or Coffee on file changes or crashes",
-  "version": "1.0.1",
-  "repository": {
-    "type": "git",
-    "url": "git://github.com/wronex/node-conquer.git"
-  },
-  "homepage": "http://wronex.github.com/node-conquer",
-  "contributors": [
-    {
-      "name": "wronex",
-      "email": "code@wronex.com"
-    }
-  ],
-  "keywords": [
-    "conquer",
-    "process",
-    "forever",
-    "error",
-    "uncaught",
-    "restart",
-    "reload",
-    "automatically"
-  ],
-  "engines": {
-    "node": ">= 0.6.0"
-  },
-  "dependencies": {
-	"commander": ">= 1.0.5",
-	"cli-color": ">= 0.2.1",
-	"watchr": ">= 2.1.5"
-  },
-  "devDependencies": {},
-  "bugs": {
-    "url": "https://github.com/wronex/node-conquer/issues"
-  },
-  "bin": {
-    "conquer": "./bin/conquer.js"
-  },
-  "licenses": [
-    {
-      "type": "MIT",
-      "url": "http://github.com/wronex/node-conquer/LICENSE"
-    }
-  ],
-  "preferGlobal": "true"
+	"author": {
+		"name": "wronex",
+		"email": "code@wronex.com"
+	},
+	"name": "conquer",
+	"description": "Restarts NodeJS or Coffee on file changes or crashes",
+	"version": "1.0.2",
+	"repository": {
+		"type": "git",
+		"url": "git://github.com/wronex/node-conquer.git"
+	},
+	"homepage": "http://wronex.github.com/node-conquer",
+	"contributors": [
+		{
+			"name": "wronex",
+			"email": "code@wronex.com"
+		}
+	],
+	"keywords": [
+		"conquer",
+		"process",
+		"forever",
+		"error",
+		"uncaught",
+		"restart",
+		"reload",
+		"automatically",
+		"live"
+	],
+	"engines": {
+		"node": ">= 0.6.0"
+	},
+	"dependencies": {
+		"commander": ">= 1.0.5",
+		"cli-color": ">= 0.2.1",
+		"watchr": ">= 2.1.5"
+	},
+	"devDependencies": {},
+	"bugs": {
+		"url": "https://github.com/wronex/node-conquer/issues"
+	},
+	"bin": {
+		"conquer": "./bin/conquer.js"
+	},
+	"licenses": [
+		{
+			"type": "MIT",
+			"url": "http://github.com/wronex/node-conquer/LICENSE"
+		}
+	],
+	"preferGlobal": "true"
 }
