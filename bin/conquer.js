@@ -10,9 +10,11 @@ var watchr	= require('watchr'),
 
 var extensions	= ['.js', '.json', '.coffee'], // All file extensions to watch.
 	watchPaths 	= ['./'], 		// Paths to watch for changes.
-	script 		= 'script', 	// The script to run.
+	script 		= 'script.js', 	// The script to run.
+	scriptName  = 'script',		// Name of the script it run, without extension.
 	scriptParams= [], 			// Parameters that will be sent to the parser.
 	parser 		= 'node',		// The parser that should run the script.
+	parserParams= [],			// Parameters sent to the parser.
 	instance	= null, 		// Instance of the parser process.
 	restartOnCleanExit = false;	// Indicates if the parser should be restarted 
 								// on clean exits (error code 0).
@@ -83,11 +85,15 @@ function start(noMsg) {
 		return;
 	
 	// Spawn an instance of the parser that will run the script.
-	instance = spawn(parser, [script].concat(scriptParams));
+	instance = spawn(parser, parserParams);
 	
 	// Redirect the parser/script's output to the console.
-	instance.stdout.on('data', function (data) { logger.scriptLog(script, data.toString()); });
-	instance.stderr.on('data', function (data) { logger.scriptLog(script, data.toString(), true); });
+	instance.stdout.on('data', function (data) { 
+		logger.scriptLog(scriptName, data.toString()); 
+	});
+	instance.stderr.on('data', function (data) { 
+		logger.scriptLog(scriptName, data.toString(), true); 
+	});
 	instance.stderr.on('data', function (data) {
 		if (/^execvp\(\)/.test(data.toString())) {
 			logger.error('Failed to restart child process.');
@@ -136,12 +142,13 @@ if (process.platform.substr(0, 3) !== 'win') {
 
 // Configure commander for the commands it should accept from the user.
 program
-	.version('1.0.3')
-	.usage('[options] <script> [script args ...]')
+	.version('1.0.4')
+	.usage('[-ewr] [-x|-c] <script> [script args ...]')
 	.option('-e, --extensions <list>', 'a list of extensions to watch for changes', extensionsParser)
 	.option('-w, --watch <list>', 'a list of folders to watch for changes', listParser)
-	.option('-x, --exec <executable>', 'the executable that runs the script')
 	.option('-r, --restart-on-exit', 'restart on clean exit')
+	.option('-x, --exec <executable>', 'the executable that runs the script')
+	.option('-c, --sys-command', 'executes the script as a system command')
 
 program.on('--help', function() {
 	console.log('  Required:');
@@ -160,11 +167,14 @@ program.on('--help', function() {
 	console.log('    file extension. Coffee is used for ".coffee"; otherwise Node is used.');
 	console.log('    Override using -x.');
 	console.log('');
+	console.log('    Using the -c option any program can be executed when a file changes. Which');
+	console.log('    can be used to watch and compile Stylus files for example.');
+	console.log('');
 	console.log('  Example:');
 	console.log('');
 	console.log('    $ conquer server.js');
-	console.log('    $ conquer -w templates -e jade run.coffee');
-	console.log('    $ conquer -x traceurc -e next IAmFuture.next');
+	console.log('    $ conquer -w templates -e .jade server.coffee');
+	console.log('    $ conquer -w styles -e .styl -c stylus.cmd styles -o css');
 	console.log('    $ conquer -e ".js, .jade" server.js --port 80');
 	console.log('');
 	console.log('    The last example will start server.js on port 80 using Node. It will');
@@ -177,13 +187,14 @@ program.parse(process.argv);
 
 // The input file should be the first argument.
 script = program.args[0];
+scriptName = path.basename(script, path.extname(script));
 if (!script) {
 	logger.warn('No input file!');
 	process.exit(0);
 	return;
 }
 
-if (!fs.existsSync(script)) {
+if (!program.sysCommand && !fs.existsSync(script)) {
 	logger.warn('Input file not found!');
 	process.exit(0);
 	return;
@@ -202,16 +213,27 @@ if (program.watch) {
 // be passed to the parser.
 scriptParams = process.argv.slice(process.argv.indexOf(script) + 1);
 
-if (program.exec) {
-	// Use the user supplied parser.
-	parser = program.exec;
+if (program.sysCommand) {
+	// No parser will be used, since no script will be ran. Instead, the script
+	// variable holds the name of the executable to run.
+	parser = script;
+	parserParams = scriptParams;
 } else {
-	// Select parser based on file extension.
-	if (path.extname(script) == '.coffee') {
-		parser = 'coffee';
-		if (process.platform.substr(0, 3) == 'win')
-			parser = 'coffee.cmd';
+	if (program.exec) {
+		// Use the user supplied parser.
+		parser = program.exec;
+	} else {
+		// Select parser based on file extension.
+		if (path.extname(script) == '.coffee') {
+			parser = 'coffee';
+			if (process.platform.substr(0, 3) == 'win')
+				parser = 'coffee.cmd';
+		}
 	}
+	
+	// The first parameters give to Node should be the name of the script to run
+	// followed by the parameters to that script.
+	parserParams = [script].concat(scriptParams);
 }
 
 if (program.extensions) {

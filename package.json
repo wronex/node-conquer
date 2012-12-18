@@ -4,8 +4,8 @@
 		"email": "code@wronex.com"
 	},
 	"name": "conquer",
-	"description": "Restarts NodeJS or Coffee on file changes or crashes",
-	"version": "1.0.3",
+	"description": "Restarts NodeJS or Coffee (or any other program) on file changes or crashes",
+	"version": "1.0.4",
 	"repository": {
 		"type": "git",
 		"url": "git://github.com/wronex/node-conquer.git"
