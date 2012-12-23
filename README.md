@@ -15,7 +15,7 @@ $ [sudo] npm install -g conquer
 
 ## Usage
 ```bash
-Usage: conquer.js [-ewr] [-x|-c] <script> [script args ...]
+Usage: conquer.js [-ewrs] [-x|-c] <script> [script args ...]
 
 Options:
 
@@ -26,6 +26,7 @@ Options:
   -r, --restart-on-exit    restart on clean exit
   -x, --exec <executable>  the executable that runs the script
   -c, --sys-command        executes the script as a system command
+  -s, --websocket <port>   reload browsers using WebSocket server
 
 Required:
 
@@ -46,6 +47,10 @@ More Info:
   Using the -c option any program can be executed when a file changes. Which
   can be used to watch and compile Stylus files for example.
 
+  A WebSocket server can be started using the -s options. The WebSocket
+  server can be used to automatically reload browsers when a file changes.
+  See ./test/websocket/ for an example.
+
 Example:
 
   $ conquer server.js
@@ -57,6 +62,33 @@ Example:
   monitor all .js and .jade files in the same directory (and subdirectories)
   as server.js for changes.
 ```
+
+## WebSocket
+conquer features a built-in WebSocket server that will notify listening browsers
+of changes. This allowes browsers to automatically refresh their page when a 
+stylesheet or HTML file is changes.
+
+To start a WebSocket server on port 81, that watches and compiles style files,
+use
+
+	```bash
+	$ conquer -s 81 -e .styl -c stylus.cmd -o css
+	```
+
+The following JavaScript can be inserted into the HTML to refresh the page when
+a styl file changes
+
+	```html
+	<script language="javascript">
+		// Connect to Conquer's WebSocket server.
+		var client = new WebSocket('ws://localhost:81');
+		client.onmessage = function(msg) {
+			// Force reload the page when Stylus have finished compiling.
+			if (msg.data == 'exit') 
+				location.reload(true);
+		}
+	</script>
+	```
 
 ## License (MIT)
 Copyright (c) 2012, wronex.

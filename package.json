@@ -5,7 +5,7 @@
 	},
 	"name": "conquer",
 	"description": "Restarts NodeJS or Coffee (or any other program) on file changes or crashes",
-	"version": "1.0.4",
+	"version": "1.1.0",
 	"repository": {
 		"type": "git",
 		"url": "git://github.com/wronex/node-conquer.git"
@@ -34,7 +34,8 @@
 	"dependencies": {
 		"commander": ">= 1.0.5",
 		"cli-color": ">= 0.2.1",
-		"watchr": ">= 2.1.5"
+		"watchr": ">= 2.1.5",
+		"wsock": ">= 1.0.0"
 	},
 	"devDependencies": {},
 	"bugs": {

@@ -1,0 +1,31 @@
+<html>
+<header>
+	<title>Conquer WebSocket Test</title>
+	<script language="javascript">
+		window.onload = function() {
+			// Define a utility function for writing log messages to the page.
+			var logDiv = document.getElementById('log');
+			function log(msg) { logDiv.innerHTML += msg + '<br>'; }
+			
+			// Connect to Conquer's WebSocket server at port 8083.
+			var client = new WebSocket('ws://localhost:8083');
+			client.onopen = function() { log('Connected'); }
+			client.onclose = function() { log('Disconnected'); }
+			client.onerror = function(ex) { log('Error: ' + ex.data); }
+			client.onmessage = function(msg) {
+				// A message was received from Conquer!
+				log('Message: ' + msg.data);
+				if (msg.data == 'exit') {
+					// Force reload the page.
+					location.reload(true);
+				}
+			}
+		}
+	</script>
+</header>
+<body>
+	<h1>Conquer WebSocket Test</h1>
+	<p>Log 1</p>
+	<p id="log"></p>
+</body>
+</html>

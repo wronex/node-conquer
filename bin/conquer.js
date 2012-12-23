@@ -3,10 +3,11 @@
 var watchr	= require('watchr'),
 	program = require('commander'),
 	clc		= require('cli-color'),
+	wsock	= require('wsock'),
 	spawn	= require('child_process').spawn,
 	path	= require('path'),
 	fs		= require('fs'),
-	logger	= require('./logger.js');
+	logger	= require('./logger');
 
 var extensions	= ['.js', '.json', '.coffee'], // All file extensions to watch.
 	watchPaths 	= ['./'], 		// Paths to watch for changes.
@@ -16,8 +17,14 @@ var extensions	= ['.js', '.json', '.coffee'], // All file extensions to watch.
 	parser 		= 'node',		// The parser that should run the script.
 	parserParams= [],			// Parameters sent to the parser.
 	instance	= null, 		// Instance of the parser process.
-	restartOnCleanExit = false;	// Indicates if the parser should be restarted 
+	restartOnCleanExit = false,	// Indicates if the parser should be restarted 
 								// on clean exits (error code 0).
+	webSocketServer = null		// A WebSocket server that will notify any 
+								// connected client of changes made to files. 
+								// This will allow browsers to refresh their 
+								// page. The WebSocket client will be sent
+								// 'restart' when the script is restarted and
+								// 'exit' when the script exists.
 
 /**
  * Parses the supplied string of comma seperated file extensions and returns an 
@@ -68,8 +75,27 @@ function kill(noMsg) {
 /** Restarts the parser. */
 function restart() {
 	logger.log('Restarting', clc.green(script));
+	notifyWebSocket('restart');
 	kill(true);
 	start(true);
+}
+
+/**
+ * Notifies all connection WebSocket clients by sending them the supplied 
+ *   message.
+ * @param message {String} - a message that will be sent to all WebSocket 
+ *   clients currently connected.
+ */
+function notifyWebSocket(message) {
+	if (!webSocketServer || !message)
+		return;
+	
+	// Send the message to all connection in the WebSocket server.
+	for (var value in webSocketServer.conn) {
+		var connection = webSocketServer.conn[value];
+		if (connection)
+			connection.send(message)
+	}
 }
 
 /** 
@@ -108,6 +134,7 @@ function start(noMsg) {
 		}
 		
 		logger.log(clc.green(script), 'exited with code', clc.yellow(code));
+		notifyWebSocket('exit');
 		
 		if (code == 0 && restartOnCleanExit) {
 			restart();
@@ -142,13 +169,14 @@ if (process.platform.substr(0, 3) !== 'win') {
 
 // Configure commander for the commands it should accept from the user.
 program
-	.version('1.0.4')
-	.usage('[-ewr] [-x|-c] <script> [script args ...]')
+	.version('1.1.0')
+	.usage('[-ewrs] [-x|-c] <script> [script args ...]')
 	.option('-e, --extensions <list>', 'a list of extensions to watch for changes', extensionsParser)
 	.option('-w, --watch <list>', 'a list of folders to watch for changes', listParser)
 	.option('-r, --restart-on-exit', 'restart on clean exit')
 	.option('-x, --exec <executable>', 'the executable that runs the script')
 	.option('-c, --sys-command', 'executes the script as a system command')
+	.option('-s, --websocket <port>', 'reload browsers using WebSocket server', parseInt)
 
 program.on('--help', function() {
 	console.log('  Required:');
@@ -169,6 +197,10 @@ program.on('--help', function() {
 	console.log('');
 	console.log('    Using the -c option any program can be executed when a file changes. Which');
 	console.log('    can be used to watch and compile Stylus files for example.');
+	console.log('');
+	console.log('    A WebSocket server can be started using the -s options. The WebSocket');
+	console.log('    server can be used to automatically reload browsers when a file changes.');
+	console.log('    See ./test/websocket/ for an example.');
 	console.log('');
 	console.log('  Example:');
 	console.log('');
@@ -243,6 +275,24 @@ if (program.extensions) {
 }
 
 restartOnCleanExit = program.restartOnExit || false;
+
+if (program.websocket) {
+	webSocketServer = wsock.createServer();
+	
+	// Store all new connections in a list of the server.
+	webSocketServer.conn = {};
+	webSocketServer.on('connect', function(connection) {
+		webSocketServer.conn[connection] = connection;
+		connection.on('close', function() {
+			delete webSocketServer.conn[connection];
+		})
+	});
+	
+	webSocketServer.listen(program.websocket || 8083, function() {
+		logger.log('WebSocket server running at', 
+			clc.green('ws://localhost:' + program.websocket));
+	});
+}
 
 // Watch the directory supplied by the user.
 logger.log('Watching', clc.green(watchPaths.join(', ')), 'for changes to', clc.green(extensions.join(', ')));

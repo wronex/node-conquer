@@ -1,3 +1,9 @@
+1.1.0 / 2012-12-23
+==================
+
+  * Added WebSocket support to allow browsers to refresh upon changes. This 
+    should make it easier to build servers/web pages/css/html.
+
 1.0.4 / 2012-12-18
 ==================
 
