@@ -60,15 +60,21 @@ function listParser(str) {
  * Kills the parser. 
  * @param {Boolean} [noMsg] - indicates if no message should be written to the 
  *   log. Defaults to false.
+ * @param {String} [signal] - indicates which kill signal that sould be sent toLowerCase
+ *   the child process (only applicable on Linux). Defaults to null.
  */
-function kill(noMsg) {
+function kill(noMsg, signal) {
 	if (!instance)
 		return;
 
 	if ((noMsg || false) !== true)
 		logger.log('Killed', clc.green(script));
 	
-	instance.kill();
+	if (signal)
+		instance.kill(signal);
+	else
+		process.kill(instance.pid);
+	
 	instance = null;
 }
 
@@ -155,15 +161,12 @@ process.on('exit', function(code) {
 });
 
 if (process.platform.substr(0, 3) !== 'win') {
-	process.on('SIGINT', function() {
-		logger.warn('User killed process');
-		kill();
-		process.exit(0);
-	});
-
-	process.on('SIGTERM', function() {
-		kill();
-		process.exit(0);
+	['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGQUIT'].forEach(function(signal) {
+		process.on(signal, function() {
+			logger.log('Sending signal', clc.yellow(signal), 'to', clc.green(script));
+			kill(true, signal);
+			process.exit(0);
+		});
 	});
 }
 
