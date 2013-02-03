@@ -60,20 +60,24 @@ function listParser(str) {
  * Kills the parser. 
  * @param {Boolean} [noMsg] - indicates if no message should be written to the 
  *   log. Defaults to false.
- * @param {String} [signal] - indicates which kill signal that sould be sent toLowerCase
- *   the child process (only applicable on Linux). Defaults to null.
+ * @param {String} [signal] - indicates which kill signal that sould be sent 
+ *   toLowerCase the child process (only applicable on Linux). Defaults to null.
  */
 function kill(noMsg, signal) {
 	if (!instance)
 		return;
 
-	if ((noMsg || false) !== true)
-		logger.log('Killed', clc.green(script));
-	
-	if (signal)
-		instance.kill(signal);
-	else
-		process.kill(instance.pid);
+	try {
+		if (signal)
+			instance.kill(signal);
+		else
+			process.kill(instance.pid);
+		
+		if ((noMsg || false) !== true)
+			logger.log('Killed', clc.green(script));
+	} catch (ex) {
+		// Process was already dead.
+	} 
 	
 	instance = null;
 }
@@ -160,15 +164,23 @@ process.on('exit', function(code) {
 	kill();
 });
 
-if (process.platform.substr(0, 3) !== 'win') {
-	['SIGTERM', 'SIGINT', 'SIGHUP', 'SIGQUIT'].forEach(function(signal) {
-		process.on(signal, function() {
-			logger.log('Sending signal', clc.yellow(signal), 'to', clc.green(script));
+// Propage signals to child process.
+['SIGHUP', 'SIGINT', 'SIGQUIT', 'SIGILL', 'SIGTRAP', 'SIGABRT', 'SIGBUS', 
+ 'SIGFPE', 'SIGUSR1', 'SIGSEGV', 'SIGUSR2', 'SIGPIPE', 'SIGTERM'
+].forEach(function(signal) {
+	try {
+		process.on(signal, (function(signal) {
+			logger.log('Sending signal', clc.yellow(signal), 'to', 
+				clc.green(script));
+			
 			kill(true, signal);
 			process.exit(0);
-		});
-	});
-}
+		}).bind(this, signal));
+	} catch (ex) {
+		// Ignore those that does not exist on Windows.
+	}
+});
+
 
 // Configure commander for the commands it should accept from the user.
 program
