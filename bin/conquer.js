@@ -185,7 +185,7 @@ process.on('exit', function(code) {
 
 // Configure commander for the commands it should accept from the user.
 program
-	.version('1.1.3')
+	.version('1.1.4')
 	.usage('[-ewras] [-x|-c] <script> [script args ...]')
 	.option('-e, --extensions <list>', 'a list of extensions to watch for changes', extensionsParser)
 	.option('-w, --watch <list>', 'a list of folders to watch for changes', listParser)
