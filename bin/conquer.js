@@ -63,10 +63,11 @@ function listParser(str) {
  *   log. Defaults to false.
  * @param {String} [signal] - indicates which kill signal that sould be sent 
  *   toLowerCase the child process (only applicable on Linux). Defaults to null.
+ * @return {Bool} - true if the process was killed; otherwise false.
  */
 function kill(noMsg, signal) {
 	if (!instance)
-		return;
+		return false;
 
 	try {
 		if (signal)
@@ -78,17 +79,22 @@ function kill(noMsg, signal) {
 			logger.log('Killed', clc.green(script));
 	} catch (ex) {
 		// Process was already dead.
+		return false;
 	} 
 	
-	instance = null;
+	return true;
 }
 
 /** Restarts the parser. */
 function restart() {
 	logger.log('Restarting', clc.green(script));
 	notifyWebSocket('restart');
-	kill(true);
-	start(true);
+	if (!kill(true)) {
+		// The process wasn't running, start it now.
+		start(true);
+	} /*else {
+		// The process will restart when its 'exit' event is emitted.
+	}*/
 }
 
 /**
@@ -138,9 +144,11 @@ function start(noMsg) {
 		}
 	});
 	instance.on('exit', function (code, signal) {
+		instance = null;
+	
 		if (signal == 'SIGUSR2') {
 			logger.error('Signal interuption');
-			restart();
+			start();
 			return;
 		}
 		
@@ -148,7 +156,7 @@ function start(noMsg) {
 		notifyWebSocket('exit');
 		
 		if (keepAlive || (restartOnCleanExit && code == 0)) {
-			restart();
+			start();
 			return;
 		}
 	});
@@ -185,7 +193,7 @@ process.on('exit', function(code) {
 
 // Configure commander for the commands it should accept from the user.
 program
-	.version('1.1.4')
+	.version('1.1.5')
 	.usage('[-ewras] [-x|-c] <script> [script args ...]')
 	.option('-e, --extensions <list>', 'a list of extensions to watch for changes', extensionsParser)
 	.option('-w, --watch <list>', 'a list of folders to watch for changes', listParser)
